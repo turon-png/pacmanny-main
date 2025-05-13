@@ -4,6 +4,7 @@ import math
 import sys
 import os
 import welcome  # make sure welcome.py is in the same directory
+high_scores = welcome.load_all_high_scores()
 from board import boards  # you must have a board.py with a variable `boards`
 
 # Ensure Python recognizes current directory
@@ -42,7 +43,7 @@ elif difficulty == "Medium":
     ghost_speeds = [2, 2, 2, 2]
     lives = 3
 elif difficulty == "Hard":
-    player_speed = 2
+    player_speed = 3
     ghost_speeds = [4, 4, 4, 4]
     lives = 2
 
@@ -699,16 +700,40 @@ def draw_misc():
         pygame.draw.circle(screen, 'blue', (140, 930), 15)
     for i in range(lives):
         screen.blit(pygame.transform.scale(player_images[0], (30, 30)), (650 + i * 40, 915))
+
+    # Display highest score and player name
+    if high_scores:
+        high_scorer, high_score = high_scores[0]
+        high_score_text = font.render(f'High Score: {high_score} by {high_scorer}', True, 'yellow')
+        screen.blit(high_score_text, (10, 880))
+
     if game_over:
         pygame.draw.rect(screen, 'white', [50, 200, 800, 300],0, 10)
         pygame.draw.rect(screen, 'dark gray', [70, 220, 760, 260], 0, 10)
         gameover_text = font.render('Game over! Space bar to restart!', True, 'red')
         screen.blit(gameover_text, (100, 300))
+        # Display top 5 scores on game over screen
+        y_offset = 350
+        rank = 1
+        for name, sc in high_scores[:5]:
+            rank_text = font.render(f'{rank}. {name} - {sc}', True, 'yellow')
+            screen.blit(rank_text, (100, y_offset))
+            y_offset += 40
+            rank += 1
     if game_won:
         pygame.draw.rect(screen, 'white', [50, 200, 800, 300],0, 10)
         pygame.draw.rect(screen, 'dark gray', [70, 220, 760, 260], 0, 10)
         gameover_text = font.render('Victory! Space bar to restart!', True, 'green')
         screen.blit(gameover_text, (100, 300))
+        welcome.save_high_score(player_name, score)
+        # Display top 5 scores on game won screen
+        y_offset = 350
+        rank = 1
+        for name, sc in high_scores[:5]:
+            rank_text = font.render(f'{rank}. {name} - {sc}', True, 'yellow')
+            screen.blit(rank_text, (100, y_offset))
+            y_offset += 40
+            rank += 1
 
 
 def check_collisions(scor, power, power_count, eaten_ghosts):
@@ -780,17 +805,17 @@ def check_position(centerx, centery):
     # check collisions based on center x and center y of player +/- fudge number
     if centerx // 30 < 29:
         if direction == 0:
-            if level[centery // num1][(centerx - num3) // num2] < 3:
-                turns[1] = True
-        if direction == 1:
             if level[centery // num1][(centerx + num3) // num2] < 3:
                 turns[0] = True
+        if direction == 1:
+            if level[centery // num1][(centerx - num3) // num2] < 3:
+                turns[1] = True
         if direction == 2:
-            if level[(centery + num3) // num1][centerx // num2] < 3:
-                turns[3] = True
-        if direction == 3:
             if level[(centery - num3) // num1][centerx // num2] < 3:
                 turns[2] = True
+        if direction == 3:
+            if level[(centery + num3) // num1][centerx // num2] < 3:
+                turns[3] = True
 
         if direction == 2 or direction == 3:
             if 12 <= centerx % num2 <= 18:
@@ -939,10 +964,11 @@ while run:
     draw_board()
     center_x = player_x + 23
     center_y = player_y + 24
-    if powerup:
-        ghost_speeds = [1, 1, 1, 1]
-    else:
-        ghost_speeds = [2, 2, 2, 2]
+    # Remove overriding ghost speeds here to respect difficulty settings
+    # if powerup:
+    #     ghost_speeds = [1, 1, 1, 1]
+    # else:
+    #     ghost_speeds = [2, 2, 2, 2]
     if eaten_ghost[0]:
         ghost_speeds[0] = 2
     if eaten_ghost[1]:
@@ -964,6 +990,8 @@ while run:
     for i in range(len(level)):
         if 1 in level[i] or 2 in level[i]:
             game_won = False
+    if game_won:
+        welcome.save_high_score(player_name, score)
 
     player_circle = pygame.draw.circle(screen, 'black', (center_x, center_y), 20, 2)
     draw_player()
@@ -1031,6 +1059,7 @@ while run:
                 game_over = True
                 moving = False
                 startup_counter = 0
+                welcome.save_high_score(player_name, score)
     if powerup and player_circle.colliderect(blinky.rect) and eaten_ghost[0] and not blinky.dead:
         if lives > 0:
             powerup = False
@@ -1217,22 +1246,17 @@ while run:
                 game_won = False
 
         if event.type == pygame.KEYUP:
-            if event.key == pygame.K_RIGHT and direction_command == 0:
-                direction_command = direction
-            if event.key == pygame.K_LEFT and direction_command == 1:
-                direction_command = direction
-            if event.key == pygame.K_UP and direction_command == 2:
-                direction_command = direction
-            if event.key == pygame.K_DOWN and direction_command == 3:
-                direction_command = direction
+            # Remove resetting direction_command on keyup to avoid control issues
+            pass
 
-    if direction_command == 0 and turns_allowed[0]:
+    # Always update direction to direction_command regardless of turns_allowed
+    if direction_command == 0:
         direction = 0
-    if direction_command == 1 and turns_allowed[1]:
+    if direction_command == 1:
         direction = 1
-    if direction_command == 2 and turns_allowed[2]:
+    if direction_command == 2:
         direction = 2
-    if direction_command == 3 and turns_allowed[3]:
+    if direction_command == 3:
         direction = 3
 
     if player_x > 900:
