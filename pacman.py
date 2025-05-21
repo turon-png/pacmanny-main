@@ -12,6 +12,38 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 pygame.init()
 
+# Initialize pygame mixer for sound
+pygame.mixer.init()
+import os
+base_dir = os.path.dirname(os.path.abspath(__file__))
+
+# Load pacmanstart.mp3 sound for game start
+pacmanstart_sound_path = os.path.join(base_dir, "sounds", "pacmanstart.mp3")
+try:
+    pacmanstart_sound = pygame.mixer.Sound(pacmanstart_sound_path)
+    pacmanstart_sound.set_volume(0.7)
+    print("Pacman start sound loaded successfully")
+except Exception as e:
+    print(f"Error loading pacman start sound: {e}")
+
+# Load pacmaneat.mp3 sound for eating pellets
+pacmaneat_sound_path = os.path.join(base_dir, "sounds", "pacmaneat.mp3")
+try:
+    pacmaneat_sound = pygame.mixer.Sound(pacmaneat_sound_path)
+    pacmaneat_sound.set_volume(0.7)
+    print("Pacman eat sound loaded successfully")
+except Exception as e:
+    print(f"Error loading pacman eat sound: {e}")
+
+# Load pacmandeath.mp3 sound for player death/game over
+pacmandeath_sound_path = os.path.join(base_dir, "sounds", "pacmandeath.mp3")
+try:
+    pacmandeath_sound = pygame.mixer.Sound(pacmandeath_sound_path)
+    pacmandeath_sound.set_volume(0.7)
+    print("Pacman death sound loaded successfully")
+except Exception as e:
+    print(f"Error loading pacman death sound: {e}")
+
 WIDTH = 900
 HEIGHT = 950
 screen = pygame.display.set_mode([WIDTH, HEIGHT])
@@ -29,8 +61,17 @@ player_name = welcome.get_player_name(screen, font)
 welcome.display_welcome_message(screen, font, player_name)
 welcome.wait_for_user_input()
 
+# Play pacman start sound
+try:
+    pacmanstart_sound.play()
+except Exception as e:
+    print(f"Error playing pacman start sound: {e}")
+
+# Show game manual before difficulty selection
+welcome.display_game_manual(screen)
+
 # Show difficulty selection screen
-difficulty = welcome.select_difficulty(screen, font)
+difficulty = welcome.select_difficulty(screen)
 print(f"Selected difficulty: {difficulty}")
 
 # Adjust game settings based on difficulty
@@ -743,12 +784,22 @@ def check_collisions(scor, power, power_count, eaten_ghosts):
         if level[center_y // num1][center_x // num2] == 1:
             level[center_y // num1][center_x // num2] = 0
             scor += 10
+            if not pygame.mixer.get_busy():
+                try:
+                    pacmaneat_sound.play()
+                except Exception as e:
+                    print(f"Error playing pacman eat sound: {e}")
         if level[center_y // num1][center_x // num2] == 2:
             level[center_y // num1][center_x // num2] = 0
             scor += 50
             power = True
             power_count = 0
             eaten_ghosts = [False, False, False, False]
+            if not pygame.mixer.get_busy():
+                try:
+                    pacmaneat_sound.play()
+                except Exception as e:
+                    print(f"Error playing pacman eat sound: {e}")
     return scor, power, power_count, eaten_ghosts
 
 
@@ -992,6 +1043,7 @@ while run:
             game_won = False
     if game_won:
         welcome.save_high_score(player_name, score)
+        score = 0  # Reset score after saving high score
 
     player_circle = pygame.draw.circle(screen, 'black', (center_x, center_y), 20, 2)
     draw_player()
@@ -1029,6 +1081,9 @@ while run:
                 (player_circle.colliderect(inky.rect) and not inky.dead) or \
                 (player_circle.colliderect(pinky.rect) and not pinky.dead) or \
                 (player_circle.colliderect(clyde.rect) and not clyde.dead):
+            print("Playing ghost collision sound")
+            # Play sound using mixer.music
+            pacmandeath_sound.play()
             if lives > 0:
                 lives -= 1
                 startup_counter = 0
@@ -1060,6 +1115,7 @@ while run:
                 moving = False
                 startup_counter = 0
                 welcome.save_high_score(player_name, score)
+                score = 0  # Reset score after saving high score
     if powerup and player_circle.colliderect(blinky.rect) and eaten_ghost[0] and not blinky.dead:
         if lives > 0:
             powerup = False
